@@ -18,10 +18,13 @@ mod model;
 async fn main() -> Result<()> {
     let mc = ModelController::new().await?;
 
+    let routes_apis = web::routes_ticket::routes(mc.clone())
+        .route_layer(middleware::from_fn(web::mw_auth::mw_require_auth));
+
     let routes_all: Router = Router::new()
         .merge(routes_hello())
         .merge(web::routes_login::routes())
-        .nest("/api", web::routes_ticket::routes(mc.clone()))
+        .nest("/api", routes_apis)
         .layer(middleware::map_response(main_response_mapper))
         .layer(CookieManagerLayer::new())
         .fallback_service(routes_static());
@@ -64,7 +67,7 @@ fn routes_hello() -> Router {
 }
 
 async fn handler(Query(params): Query<HelloParams>) -> impl IntoResponse {
-    println!("-->> {:<12} - /hello?name={}", "HANDLER", params.name.clone().unwrap());
+    println!("-->> {:<12} - handler", "HANDLER");
     let name  = params.name.as_deref().unwrap_or("World!");
     return Html(format!("Hello, <strong>{name}!!!</strong>"));
 }
@@ -72,7 +75,7 @@ async fn handler(Query(params): Query<HelloParams>) -> impl IntoResponse {
 
 // region: --- handler using path
 async fn handler2(Path(_name): Path<String>) -> impl IntoResponse { 
-    println!("-->> {:<12} - /hello/{}", "HANDLER", _name);
+    println!("-->> {:<12} - handler2", "HANDLER");
     return Html(format!("Hello, <strong>{_name}!!!</strong>"));
 }
 
